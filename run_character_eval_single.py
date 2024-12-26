@@ -95,9 +95,9 @@ def eval_models_pairwise(model_1, model_2, work_dir, tag,max_workers=10):
     assert model_2 in candidate_config, f"{model_2} not found in candidate config"
     print(f"Comparing `{model_1}` and `{model_2}`")
     print(candidate_config)
-
+    model_config = candidate_config[model_1]
     if candidate_config['source']=='local':
-        start_backend_service(candidate_config)
+        start_backend_service(model_config)
     
     eval_results = []
     indexed_eval_results = []
@@ -137,12 +137,12 @@ def eval_models_pairwise(model_1, model_2, work_dir, tag,max_workers=10):
             
     return win_lose_pairs
 
-def start_backend_service(candidate_config):
-    print("Candidate Config:", candidate_config)
-    port = candidate_config['endpoints']['api_port']
-    api_key = candidate_config['endpoints']['api_key']
-    dtype = candidate_config['endpoints']['dtype']
-    model_path = candidate_config['model_path']
+def start_backend_service(model_config):
+    print("Candidate Config:", model_config)
+    port = model_config['endpoints']['api_port']
+    api_key = model_config['endpoints']['api_key']
+    dtype = model_config['endpoints']['dtype']
+    model_path = model_config['model_path']
 
     # Start the backend service
     backend_command = [
