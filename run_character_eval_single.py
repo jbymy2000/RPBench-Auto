@@ -65,8 +65,9 @@ def chat_completion_judger(model, messages):
                 and "next_round_user_speaks" in parsed_response
             ):
                 return response
-        except:
-            pass
+        except Exception as e:
+            print(f"Error parsing response: {e}")
+            print(f"Response: {response}")
 
 
 def eval_models_pairwise(model_1, model_2, work_dir, tag,max_workers=10):
