@@ -9,6 +9,8 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import subprocess
 import traceback
+import time
+import requests
 
 MAX_MESSAGES_PER_CHAR = 10
 RPBENCH_PATH = "/home/xhai/bianjr/projects/RPBench-Auto/data/rpbench_chcracter_subset.jsonl"
@@ -157,23 +159,20 @@ def start_backend_service(model_config):
     print(backend_command_str)
 
     process = subprocess.Popen(backend_command_str, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    
-    import time
-    time.sleep(5)
 
-    # Check if the backend service started successfully
-    try:
-        response = subprocess.check_output(
-            ["curl", f"http://localhost:{port}/health"],
-            stderr=subprocess.STDOUT
-        )
-        print(f"Health check response: {response.decode()}")
-        if b"healthy" in response:
-            print("Backend service started successfully.")
-        else:
-            print("Backend service did not start successfully.")
-    except subprocess.CalledProcessError as e:
-        print(f"Error checking backend service status: {e.output.decode()}")
+    # Check if the service is up every 5 seconds
+    health_url = f"http://localhost:{port}/health"
+    while True:
+        try:
+            response = requests.get(health_url)
+            if response.status_code == 200:
+                print("Backend service started successfully.")
+                break
+        except requests.ConnectionError:
+            pass
+        print("Waiting for backend service to start...")
+        time.sleep(5)
+
     
 def process_single_character(
     character_data,
