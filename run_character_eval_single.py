@@ -152,7 +152,7 @@ def start_backend_service(model_config):
         "--api-key", api_key
     ]
     backend_command_str = " ".join(backend_command)
-    print(f"Starting backend service with command: {backend_command_str}")
+    print(backend_command_str)
     subprocess.Popen(backend_command, shell=True)
         
 def process_single_character(
