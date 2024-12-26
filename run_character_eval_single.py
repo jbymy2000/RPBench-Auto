@@ -160,7 +160,7 @@ def start_backend_service(model_config):
     time.sleep(5)
     
     # Check if the process is still running
-    if process.poll() is not None:
+    if process.poll() is None:
         raise RuntimeError("Failed to start the backend service. Please check the logs for more details.")
         
 def process_single_character(
