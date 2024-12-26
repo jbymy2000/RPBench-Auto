@@ -7,7 +7,7 @@ from tqdm.auto import tqdm
 import random
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
-
+import subprocess
 
 MAX_MESSAGES_PER_CHAR = 10
 RPBENCH_PATH = "/home/xhai/bianjr/projects/RPBench-Auto/data/rpbench_chcracter_subset.jsonl"
@@ -83,7 +83,7 @@ def eval_models_pairwise(model_1, model_2, max_workers=10):
 
     
     ## 调用gpt4o作为评判模型
-    judger_config = make_config("/home/xhai/bianjr/projects/RP_bench/config/judger_config.yaml")
+    judger_config = make_config("/home/xhai/rex/bench_base/configs/rpbench/judger_config.yaml")
     assert len(judger_config) == 1, "Judger config should have only one model"
     judger_model_name = list(judger_config.keys())[0]
     judger_model = judger_config[judger_model_name]
@@ -91,11 +91,15 @@ def eval_models_pairwise(model_1, model_2, max_workers=10):
 
     
     ## 其余的api候选调用
-    candidate_config = make_config("/home/xhai/bianjr/projects/RP_bench/config/api_config.yaml")
+    candidate_config = make_config("/home/xhai/rex/bench_base/configs/rpbench/api_config.yaml")
     assert model_1 in candidate_config, f"{model_1} not found in candidate config"
     assert model_2 in candidate_config, f"{model_2} not found in candidate config"
     print(f"Comparing `{model_1}` and `{model_2}`")
+    
 
+    if candidate_config['source']=='local':
+        start_backend_service(candidate_config)
+    
     eval_results = []
     indexed_eval_results = []
 
@@ -134,6 +138,23 @@ def eval_models_pairwise(model_1, model_2, max_workers=10):
             
     return win_lose_pairs
 
+def start_backend_service(candidate_config):
+    port = candidate_config['endpoints']['api_port']
+    api_key = candidate_config['endpoints']['api_key']
+    dtype = candidate_config['endpoints']['dtype']
+    model_path = candidate_config['model_path']
+
+    # Start the backend service
+    backend_command = [
+        "vllm",
+        "serve",
+        model_path,
+        "--port", port,
+        "--dtype", dtype,
+        "--api-key", api_key
+    ]
+    subprocess.Popen(backend_command, shell=True)
+        
 def process_single_character(
     character_data,
     model_1,
@@ -141,20 +162,6 @@ def process_single_character(
     judger_model,
     max_messages_per_char=5,
 ):
-    """print(
-    json.dumps(
-        {
-            "message": "haha",
-            "character_data": character_data,
-            "model_1": model_1,
-            "candidate_config": candidate_config,
-            "judger_model": judger_model,
-            "max_messages_per_char": max_messages_per_char,
-        },
-        indent=4,  # 美化输出，4 个空格缩进
-        default=str  # 确保非 JSON 原生类型（如对象）可以序列化为字符串
-    )
-    )"""
     npc_profile = character_data["npc_profile"]
     conversation = character_data["conversation"]
     background = character_data["background"]
