@@ -96,7 +96,7 @@ def eval_models_pairwise(model_1, model_2, work_dir, tag,max_workers=10):
     print(f"Comparing `{model_1}` and `{model_2}`")
     print(candidate_config)
     model_config = candidate_config[model_1]
-    if candidate_config['source']=='local':
+    if model_config['source']=='local':
         start_backend_service(model_config)
     
     eval_results = []
