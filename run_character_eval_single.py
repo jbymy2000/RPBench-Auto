@@ -110,7 +110,7 @@ def eval_models_pairwise(model_1, model_2, work_dir, tag,max_workers=10):
             executor.submit(
                 process_single_character,
                 character_data[1],
-                model_1,
+                model_config,
                 candidate_config,
                 judger_model,
                 MAX_MESSAGES_PER_CHAR
@@ -153,21 +153,30 @@ def start_backend_service(model_config):
         "--dtype", dtype,
         "--api-key", api_key
     ]
-    backend_command_str = " ".join(backend_command)
+    backend_command_str = " ".join(backend_command) + " &"
     print(backend_command_str)
 
-    process = subprocess.Popen(backend_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process = subprocess.Popen(backend_command_str, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     
     import time
     time.sleep(5)
+
+    # Check if the backend service started successfully
+    try:
+        response = subprocess.check_output(
+            ["curl", f"http://localhost:{port}/health"],
+            stderr=subprocess.STDOUT
+        )
+        if b"healthy" in response:
+            print("Backend service started successfully.")
+        else:
+            print("Backend service did not start successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error checking backend service status: {e.output.decode()}")
     
-    # Check if the process is still running
-    if process.poll() is None:
-        raise RuntimeError("Failed to start the backend service. Please check the logs for more details.")
-        
 def process_single_character(
     character_data,
-    model_1,
+    model_config,
     candidate_config,
     judger_model,
     max_messages_per_char=5,
@@ -199,14 +208,11 @@ def process_single_character(
         judger_messages.append({"role": "assistant", "content": judger_response})
 
         for _ in range(max_messages_per_char):
-            # 设置模型名称
-            model_a = model_1
-
             user_input = parsed_judger_response["next_round_user_speaks"]
             candidate_messages.append({"role": "user", "content": user_input})
 
             # 调用候选模型获取响应
-            model_a_response = chat_completion(candidate_config[model_a], candidate_messages)
+            model_a_response = chat_completion(model_config, candidate_messages)
 
             # 将响应传递给评判模型
             judger_message_content = model_a_response
