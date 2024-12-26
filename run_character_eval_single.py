@@ -171,65 +171,69 @@ def process_single_character(
     judger_model,
     max_messages_per_char=5,
 ):
-    npc_profile = character_data["npc_profile"]
-    conversation = character_data["conversation"]
-    background = character_data["background"]
-    greeting = "\n".join(conversation[0]["sentences"])
-    #print("npc_profile",npc_profile)
-    candidate_messages = [
-        {
-            "role": "system",
-            "content": TEMPLATE.substitute(background=background, **npc_profile),
-        },
-        {"role": "assistant", "content": greeting},
-    ]
+    try:
+        npc_profile = character_data["npc_profile"]
+        conversation = character_data["conversation"]
+        background = character_data["background"]
+        greeting = "\n".join(conversation[0]["sentences"])
+        #print("npc_profile",npc_profile)
+        candidate_messages = [
+            {
+                "role": "system",
+                "content": TEMPLATE.substitute(background=background, **npc_profile),
+            },
+            {"role": "assistant", "content": greeting},
+        ]
 
-    judger_messages = [
-        {"role": "system", "content": JUDGER_TEMPLATE.substitute(npc_profile)},
-        {"role": "user", "content": greeting},
-    ]
+        judger_messages = [
+            {"role": "system", "content": JUDGER_TEMPLATE.substitute(npc_profile)},
+            {"role": "user", "content": greeting},
+        ]
 
-    eval_results = []
+        eval_results = []
 
-    # 初始评判模型的响应
-    judger_response = chat_completion_judger(judger_model, judger_messages)
-    parsed_judger_response = extract_and_parse_json(judger_response)
-    judger_messages.append({"role": "assistant", "content": judger_response})
-
-    for _ in range(max_messages_per_char):
-        # 设置模型名称
-        model_a = model_1
-
-        user_input = parsed_judger_response["next_round_user_speaks"]
-        candidate_messages.append({"role": "user", "content": user_input})
-
-        # 调用候选模型获取响应
-        model_a_response = chat_completion(candidate_config[model_a], candidate_messages)
-
-        # 将响应传递给评判模型
-        judger_message_content = model_a_response
-        judger_messages.append({"role": "user", "content": judger_message_content})
+        # 初始评判模型的响应
         judger_response = chat_completion_judger(judger_model, judger_messages)
         parsed_judger_response = extract_and_parse_json(judger_response)
-
-        # 保存评估结果
-        eval_result = {
-            "candidate_messages": candidate_messages.copy(),
-            "judger_messages": judger_messages.copy(),
-            "judger_response": judger_response,
-        }
-        #print(eval_result)
-        
-
-        # 更新对话历史
         judger_messages.append({"role": "assistant", "content": judger_response})
-        candidate_messages.append(
-            {"role": "assistant", "content": model_a_response}
-        )
-        if _ == max_messages_per_char - 1:
-            eval_results.append(eval_result)
 
-    return eval_results
+        for _ in range(max_messages_per_char):
+            # 设置模型名称
+            model_a = model_1
+
+            user_input = parsed_judger_response["next_round_user_speaks"]
+            candidate_messages.append({"role": "user", "content": user_input})
+
+            # 调用候选模型获取响应
+            model_a_response = chat_completion(candidate_config[model_a], candidate_messages)
+
+            # 将响应传递给评判模型
+            judger_message_content = model_a_response
+            judger_messages.append({"role": "user", "content": judger_message_content})
+            judger_response = chat_completion_judger(judger_model, judger_messages)
+            parsed_judger_response = extract_and_parse_json(judger_response)
+
+            # 保存评估结果
+            eval_result = {
+                "candidate_messages": candidate_messages.copy(),
+                "judger_messages": judger_messages.copy(),
+                "judger_response": judger_response,
+            }
+            #print(eval_result)
+            
+
+            # 更新对话历史
+            judger_messages.append({"role": "assistant", "content": judger_response})
+            candidate_messages.append(
+                {"role": "assistant", "content": model_a_response}
+            )
+            if _ == max_messages_per_char - 1:
+                eval_results.append(eval_result)
+
+        return eval_results
+    except Exception as e:
+        print(f"Error processing character data: {e}")
+        raise
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
