@@ -8,6 +8,7 @@ import random
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import subprocess
+import traceback
 
 MAX_MESSAGES_PER_CHAR = 10
 RPBENCH_PATH = "/home/xhai/bianjr/projects/RPBench-Auto/data/rpbench_chcracter_subset.jsonl"
@@ -158,7 +159,6 @@ def start_backend_service(model_config):
     process = subprocess.Popen(backend_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     
     import time
-    import traceback
     time.sleep(5)
     
     # Check if the process is still running
