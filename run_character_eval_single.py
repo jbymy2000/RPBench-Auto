@@ -224,6 +224,6 @@ def process_single_character(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_name", type=str, default="方案三")
+    parser.add_argument("--model", type=str, default="方案三")
     args = parser.parse_args()
-    eval_models_pairwise(args.model_name, args.model_name)
+    eval_models_pairwise(args.model, args.model)
