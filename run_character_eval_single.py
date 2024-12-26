@@ -11,7 +11,6 @@ import subprocess
 
 MAX_MESSAGES_PER_CHAR = 10
 RPBENCH_PATH = "/home/xhai/bianjr/projects/RPBench-Auto/data/rpbench_chcracter_subset.jsonl"
-SAVE_PATH = "/home/xhai/bianjr/projects/RPBench-Auto/test_results/subset_results/方案三对比实验1"
 
 TEMPLATE = Template(
     """$background
@@ -70,7 +69,7 @@ def chat_completion_judger(model, messages):
             pass
 
 
-def eval_models_pairwise(model_1, model_2, max_workers=10):
+def eval_models_pairwise(model_1, model_2, work_dir, tag,max_workers=10):
 
     eval_data = []
     win_lose_pairs = []
@@ -127,12 +126,12 @@ def eval_models_pairwise(model_1, model_2, max_workers=10):
                 print(f"Error processing data: {e}")
     indexed_eval_results.sort(key=lambda x: x[0])
     eval_results = [result for _, result in indexed_eval_results]
-
+    output_dir = os.path.join(work_dir, tag)
     # 保存评估结果
-    if not os.path.exists(SAVE_PATH):
-        os.makedirs(SAVE_PATH)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
     with jsonlines.open(
-        f"{SAVE_PATH}/eval_{model_1}.jsonl", "a"
+        f"{output_dir}/eval_{model_1}.jsonl", "a"
     ) as writer:
         writer.write_all(eval_results)
             
@@ -224,6 +223,8 @@ def process_single_character(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str, default="方案三")
+    parser.add_argument("--model", type=str, required=True, help="Model name to evaluate")
+    parser.add_argument("-w", "--work_dir", type=str, required=True, help="Directory to save evaluation results")
+    parser.add_argument("--tag", type=str, required=True, help="Tag for the evaluation run")
     args = parser.parse_args()
-    eval_models_pairwise(args.model, args.model)
+    eval_models_pairwise(args.model, args.model, args.work_dir,args.tag)
