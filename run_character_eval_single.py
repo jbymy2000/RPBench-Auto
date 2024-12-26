@@ -167,6 +167,7 @@ def start_backend_service(model_config):
             ["curl", f"http://localhost:{port}/health"],
             stderr=subprocess.STDOUT
         )
+        print(f"Health check response: {response.decode()}")
         if b"healthy" in response:
             print("Backend service started successfully.")
         else:
