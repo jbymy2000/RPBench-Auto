@@ -153,14 +153,15 @@ def start_backend_service(model_config):
     ]
     backend_command_str = " ".join(backend_command)
     print(backend_command_str)
-    process = subprocess.Popen(backend_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = process.communicate()
-    if process.returncode != 0:
-        print(f"Error starting backend service: {stderr.decode('utf-8')}")
-    else:
-        print(f"Backend service started successfully: {stdout.decode('utf-8')}")
+
+    process = subprocess.Popen(backend_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    
     import time
     time.sleep(5)
+    
+    # Check if the process is still running
+    if process.poll() is not None:
+        raise RuntimeError("Failed to start the backend service. Please check the logs for more details.")
         
 def process_single_character(
     character_data,
