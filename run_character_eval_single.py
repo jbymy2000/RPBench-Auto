@@ -147,7 +147,7 @@ def start_backend_service(model_config):
         "vllm",
         "serve",
         model_path,
-        "--port", port,
+        "--port", str(port),
         "--dtype", dtype,
         "--api-key", api_key
     ]
