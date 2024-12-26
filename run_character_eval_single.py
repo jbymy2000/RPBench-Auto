@@ -158,6 +158,7 @@ def start_backend_service(model_config):
     process = subprocess.Popen(backend_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     
     import time
+    import traceback
     time.sleep(5)
     
     # Check if the process is still running
@@ -233,6 +234,7 @@ def process_single_character(
         return eval_results
     except Exception as e:
         print(f"Error processing character data: {e}")
+        traceback.print_exc()
         raise
 
 if __name__ == "__main__":
