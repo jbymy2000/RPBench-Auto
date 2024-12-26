@@ -153,7 +153,14 @@ def start_backend_service(model_config):
     ]
     backend_command_str = " ".join(backend_command)
     print(backend_command_str)
-    subprocess.Popen(backend_command, shell=True)
+    process = subprocess.Popen(backend_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+    if process.returncode != 0:
+        print(f"Error starting backend service: {stderr.decode('utf-8')}")
+    else:
+        print(f"Backend service started successfully: {stdout.decode('utf-8')}")
+    import time
+    time.sleep(5)
         
 def process_single_character(
     character_data,
