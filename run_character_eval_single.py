@@ -94,7 +94,6 @@ def eval_models_pairwise(model_1, model_2, work_dir, tag,max_workers=10):
     assert model_1 in candidate_config, f"{model_1} not found in candidate config"
     assert model_2 in candidate_config, f"{model_2} not found in candidate config"
     print(f"Comparing `{model_1}` and `{model_2}`")
-    print(candidate_config)
     model_config = candidate_config[model_1]
     if model_config['source']=='local':
         start_backend_service(model_config)
@@ -138,7 +137,6 @@ def eval_models_pairwise(model_1, model_2, work_dir, tag,max_workers=10):
     return win_lose_pairs
 
 def start_backend_service(model_config):
-    print("Candidate Config:", model_config)
     port = model_config['endpoints']['api_port']
     api_key = model_config['endpoints']['api_key']
     dtype = model_config['endpoints']['dtype']
