@@ -173,7 +173,7 @@ def start_backend_service(model_config):
         try:
             response = requests.get(health_url)
             if response.status_code == 200:
-                print("Backend service started successfully.")
+                print(f"Backend service started successfully on {health_url}")
                 break
         except requests.ConnectionError:
             pass
