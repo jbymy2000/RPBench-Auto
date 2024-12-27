@@ -1,62 +1,16 @@
 import os
-import json
 import jsonlines
 from utils import make_config, chat_completion, extract_and_parse_json,get_free_gpus,get_open_port
-from string import Template
 from tqdm.auto import tqdm
-import random
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import subprocess
 import traceback
 import time
 import requests
+from templates import TEMPLATE, JUDGER_TEMPLATE
 
-MAX_MESSAGES_PER_CHAR = 10
-RPBENCH_PATH = "/home/xhai/bianjr/projects/RPBench-Auto/data/rpbench_chcracter_subset.jsonl"
-
-TEMPLATE = Template(
-    """$background
-
-# NPC Profile:
-## Name
-$name_text
-
-## Title
-$title
-
-## Description
-$description
-
-## Definition
-$definition_text
-
-## Long Definition
-$long_definition_text
-"""
-)
-
-JUDGER_TEMPLATE = Template(
-    """# NPC Profile:
-## Name
-$name_text
-
-## Title
-$title
-
-## Description
-$description
-
-## Definition
-$definition_text
-
-## Long Definition
-$long_definition_text
-
-You are an AI NPC system. You need to simulate a user and interact with AI NPC. For each round, You should give your response to AI NPC. It will be in a JSON format: {"winner": "model_a", "next_round_user_speaks": "YOUR RESPONSE AS THE SIMULATED USER", "decision_reason": "None"}.
-"""
-)
-
+RPBENCH_PATH = "/home/xhai/rex/bench_base/datasets/rpbench/rpbench_chcracter_subset.jsonl"
 
 def chat_completion_judger(model, messages):
     while True:
@@ -73,7 +27,7 @@ def chat_completion_judger(model, messages):
             print(f"Response: {response}")
 
 
-def eval_models_pairwise(model_1, model_2, work_dir, tag,max_workers=10):
+def eval_models_pairwise(model_1, model_2, work_dir, tag,max_workers=10, max_messages_per_char):
 
     eval_data = []
     win_lose_pairs = []
@@ -117,7 +71,7 @@ def eval_models_pairwise(model_1, model_2, work_dir, tag,max_workers=10):
                 model_config,
                 candidate_config,
                 judger_model,
-                MAX_MESSAGES_PER_CHAR
+                max_messages_per_char
             ): character_data[0]
             for character_data in eval_data
         }
@@ -255,5 +209,6 @@ if __name__ == "__main__":
     parser.add_argument("--model", type=str, required=True, help="Model name to evaluate")
     parser.add_argument("-w", "--work_dir", type=str, required=True, help="Directory to save evaluation results")
     parser.add_argument("--tag", type=str, required=True, help="Tag for the evaluation run")
+    parser.add_argument("--max_messages_per_char", type=int, default=10, help="Maximum number of messages per character")
     args = parser.parse_args()
-    eval_models_pairwise(args.model, args.model, args.work_dir,args.tag)
+    eval_models_pairwise(args.model, args.model, args.work_dir,args.tag,args.max_messages_per_char)
