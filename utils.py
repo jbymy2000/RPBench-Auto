@@ -381,7 +381,7 @@ def get_free_gpus(num_gpus):
 
     while True:
         free_gpus = []
-        for i in range(num_gpus):
+        for i in range(8):
             handle = pynvml.nvmlDeviceGetHandleByIndex(i)
             if is_gpu_free(handle):
                 free_gpus.append(i)
