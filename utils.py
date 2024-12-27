@@ -9,7 +9,9 @@ import random
 import requests
 import json_repair
 import re
-
+import subprocess
+import time
+import socket
 from typing import Optional
 from glob import glob
 
@@ -358,3 +360,44 @@ def chat_completion_cohere(model, messages, temperature, max_tokens):
             break
 
     return output
+
+
+def get_open_port():
+    for port in range(8000, 8101):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            if s.connect_ex(('localhost', port)) != 0:
+                return port
+    raise Exception("No open port found in the range 8000-8100")
+
+def get_free_gpus(num_gpus):
+
+    def parse_gpu_info(output):
+        gpu_info = []
+        for line in output.split('\n'):
+            if 'MiB' in line:
+                gpu_info.append(line)
+        return gpu_info
+
+    def is_gpu_free(gpu_info):
+        for info in gpu_info:
+            if 'MiB /' in info:
+                used_memory = int(info.split()[2])
+                if used_memory == 0:
+                    return True
+        return False
+
+    while True:
+        result = subprocess.run(['nvidia-smi'], stdout=subprocess.PIPE)
+        output = result.stdout.decode('utf-8')
+        gpu_info = parse_gpu_info(output)
+
+        free_gpus = []
+        for i in range(num_gpus):
+            if is_gpu_free(gpu_info[i]):
+                free_gpus.append(i)
+
+        if len(free_gpus) >= num_gpus:
+            return free_gpus
+        else:
+            print(f"Waiting for {num_gpus} free GPUs. Currently available: {len(free_gpus)}")
+            time.sleep(10)

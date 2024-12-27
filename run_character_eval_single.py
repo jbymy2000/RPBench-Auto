@@ -1,7 +1,7 @@
 import os
 import json
 import jsonlines
-from utils import make_config, chat_completion, extract_and_parse_json
+from utils import make_config, chat_completion, extract_and_parse_json,get_free_gpus,get_open_port
 from string import Template
 from tqdm.auto import tqdm
 import random
@@ -100,6 +100,8 @@ def eval_models_pairwise(model_1, model_2, work_dir, tag,max_workers=10):
     print(f"Comparing `{model_1}` and `{model_2}`")
     model_config = candidate_config[model_1]
     if model_config['source']=='local':
+        if 'port' not in model_config['endpoints']:
+            model_config['endpoints']['api_port'] = get_open_port()
         start_backend_service(model_config)
     
     eval_results = []
@@ -145,7 +147,12 @@ def start_backend_service(model_config):
     api_key = model_config['endpoints']['api_key']
     dtype = model_config['endpoints']['dtype']
     model_path = model_config['model_path']
-
+    gpu_num = model_config.get('gpu_num', 1)
+    target_devices = get_free_gpus(gpu_num)
+    
+    # Set CUDA_VISIBLE_DEVICES
+    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(map(str, target_devices))
+    
     # Start the backend service
     backend_command = [
         "vllm",
@@ -158,7 +165,7 @@ def start_backend_service(model_config):
     backend_command_str = " ".join(backend_command) + " &"
     print(backend_command_str)
 
-    process = subprocess.Popen(backend_command_str, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process = subprocess.Popen(backend_command_str, shell=True, stdout=None, stderr=None)
 
     # Check if the service is up every 5 seconds
     health_url = f"http://localhost:{port}/health"
