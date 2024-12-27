@@ -14,6 +14,7 @@ import time
 import socket
 from typing import Optional
 from glob import glob
+import pynvml
 
 # API setting constants
 API_MAX_RETRY = 16
@@ -371,32 +372,22 @@ def get_open_port():
 
 def get_free_gpus(num_gpus):
 
-    def parse_gpu_info(output):
-        gpu_info = []
-        for line in output.split('\n'):
-            if 'MiB' in line:
-                gpu_info.append(line)
-        return gpu_info
+    pynvml.nvmlInit()
 
-    def is_gpu_free(gpu_info):
-        for info in gpu_info:
-            if 'MiB /' in info:
-                used_memory = int(info.split()[2])
-                if used_memory == 0:
-                    return True
-        return False
+    def is_gpu_free(handle):
+        mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+        used_memory = mem_info.used / 1024 / 1024  # Convert bytes to MiB
+        return used_memory < 1024
 
     while True:
-        result = subprocess.run(['nvidia-smi'], stdout=subprocess.PIPE)
-        output = result.stdout.decode('utf-8')
-        gpu_info = parse_gpu_info(output)
-
         free_gpus = []
         for i in range(num_gpus):
-            if is_gpu_free(gpu_info[i]):
+            handle = pynvml.nvmlDeviceGetHandleByIndex(i)
+            if is_gpu_free(handle):
                 free_gpus.append(i)
 
         if len(free_gpus) >= num_gpus:
+            pynvml.nvmlShutdown()
             return free_gpus
         else:
             print(f"Waiting for {num_gpus} free GPUs. Currently available: {len(free_gpus)}")
