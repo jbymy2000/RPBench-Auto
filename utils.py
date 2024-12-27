@@ -387,6 +387,7 @@ def get_free_gpus(num_gpus):
                 free_gpus.append(i)
 
         if len(free_gpus) >= num_gpus:
+            print(f"Found {num_gpus} free GPUs: {free_gpus}")
             pynvml.nvmlShutdown()
             return free_gpus
         else:
