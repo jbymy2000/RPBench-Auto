@@ -385,11 +385,10 @@ def get_free_gpus(num_gpus):
             handle = pynvml.nvmlDeviceGetHandleByIndex(i)
             if is_gpu_free(handle):
                 free_gpus.append(i)
-
-        if len(free_gpus) >= num_gpus:
-            print(f"Found {num_gpus} free GPUs: {free_gpus}")
-            pynvml.nvmlShutdown()
-            return free_gpus
-        else:
-            print(f"Waiting for {num_gpus} free GPUs. Currently available: {len(free_gpus)}")
-            time.sleep(10)
+            if len(free_gpus) >= num_gpus:
+                print(f"Found {num_gpus} free GPUs: {free_gpus}")
+                pynvml.nvmlShutdown()
+                return free_gpus
+            else:
+                print(f"Waiting for {num_gpus} free GPUs. Currently available: {len(free_gpus)}")
+                time.sleep(10)
