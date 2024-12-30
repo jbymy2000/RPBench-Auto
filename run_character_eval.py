@@ -6,6 +6,9 @@ from string import Template
 from tqdm.auto import tqdm
 import random
 import argparse
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 MAX_MESSAGES_PER_CHAR = 5
 RPBENCH_PATH = "data/rpbench_character.jsonl"
