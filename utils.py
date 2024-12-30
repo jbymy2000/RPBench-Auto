@@ -445,8 +445,7 @@ def start_backend_service(
                 backend_command,
                 stdout=log_file,
                 stderr=log_file,
-                shell=False,
-                preexec_fn=os.setsid
+                shell=False
             )
             print(f"子进程启动，PID: {process.pid}")
             spinner = Halo(text='等待后端服务启动...', spinner='dots')
@@ -461,12 +460,6 @@ def start_backend_service(
                 except requests.ConnectionError:
                     pass
                 time.sleep(5)
-                def cleanup():
-                    logger.info("主进程退出，清理vllm子进程...")
-                    process.terminate()
-                    process.wait()
-                    logger.info("vllm子进程已退出")
-                    atexit.register(cleanup)
                 
     except KeyboardInterrupt:
         # 捕获 Ctrl+C
