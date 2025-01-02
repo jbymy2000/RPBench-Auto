@@ -33,7 +33,7 @@ if __name__ == "__main__":
     thread = start_service(model_config,model, work_dir, tag, port,stop_event)
     try:
         evaluator = Evaluator(model, work_dir, args.dataset, tag, port, NUM_WORKERS, max_messages_per_char)
-        # evaluator.evaluate()
+        evaluator.evaluate()
     except KeyboardInterrupt:
         thread.join()
     finally:
