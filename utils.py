@@ -19,7 +19,7 @@ import pynvml
 import logging
 from halo import Halo
 import signal
-import atexit
+
 logger = logging.getLogger("rpbench")
 
 # API setting constants
@@ -64,13 +64,13 @@ def extract_and_parse_json(text, is_judger=True):
             # There are something wrong in the JSON string, we will try to extract the "winner" field from the string and throw away other keys.
             winner_start = json_str.find("winner\":")
             if winner_start == -1:
-                logger.error(f"Cannot find the 'winner' field in the JSON string.\n\n{json_str}")
+                logger.warning(f"Cannot find the 'winner' field in the JSON string.\n\n{json_str}")
                 raise Exception(f"Cannot find the 'winner' field in the JSON string.\n\n{json_str}")
             winner_end = json_str.find(",", winner_start)
             new_json_str = "{\"" + json_str[winner_start:winner_end] + "}"
             parsed_obj = json_repair.loads(new_json_str)
         except Exception:
-            logger.error(f"Cannot parse JSON string.\n\nnew version={new_json_str},\n\nprevious version={json_str}")
+            logger.warning(f"Cannot parse JSON string.\n\nnew version={new_json_str},\n\nprevious version={json_str}")
             raise Exception(f"Cannot parse JSON string.\n\nnew version={new_json_str},\n\nprevious version={json_str}")
 
     return parsed_obj
@@ -104,7 +104,7 @@ def fix_anthropic_message(messages):
 def chat_completion_judger(model, messages):
     while True:
         response = chat_completion(model, messages)
-        print("judger模型响应",response)
+        # print("judger模型响应",response)
         try:
             parsed_response = extract_and_parse_json(response)
             if (
@@ -113,7 +113,7 @@ def chat_completion_judger(model, messages):
             ):
                 return response
         except Exception as e:
-            logger.error(f"Error parsing response: {e}")
+            logger.warning(f"Error parsing response: {e}")
             
 @retry(stop=stop_after_attempt(10), wait=wait_fixed(2), retry=retry_if_exception_type(ValueError))
 def chat_completion(model, messages, temperature=1.0, max_tokens=2048):
@@ -392,7 +392,8 @@ def get_open_port():
     raise Exception("No open port found in the range 8000-8100")
 
 def get_free_gpus(num_gpus):
-
+    spinner = Halo(text='寻找可用GPU...', spinner='dots')
+    spinner.start()
     pynvml.nvmlInit()
 
     def is_gpu_free(handle):
@@ -407,68 +408,9 @@ def get_free_gpus(num_gpus):
             if is_gpu_free(handle):
                 free_gpus.append(i)
             if len(free_gpus) >= num_gpus:
-                print(f"Found {num_gpus} free GPUs: {free_gpus}")
+                spinner.succeed(f"Found {num_gpus} free GPUs: {free_gpus}")
                 pynvml.nvmlShutdown()
                 return free_gpus
             else:
-                print(f"Waiting for {num_gpus} free GPUs. Currently available: {len(free_gpus)}")
-                time.sleep(10)
-
-                
-def start_backend_service(
-    model_path, api_key, api_port, dtype, vllm_log_path, gpu_num=1
-):
-
-    target_devices = get_free_gpus(gpu_num)
-
-    # 设置 CUDA_VISIBLE_DEVICES 环境变量
-    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(map(str, target_devices))
-    # 日志路径文件
-    log_file_path = os.path.join(vllm_log_path, "vllm_backend_service.log")
-    os.makedirs(vllm_log_path, exist_ok=True)  # 确保日志路径存在
-    # 构造启动命令
-    backend_command = [
-        "vllm",
-        "serve",
-        model_path,
-        "--port", str(api_port),
-        "--dtype", dtype,
-        "--api-key", api_key
-    ]
-
-    logger.info(f"启动vllm的命令是: {' '.join(backend_command)}")
-    logger.info(f"启动vllm日志路径是: {vllm_log_path}")
-    spinner=None
-    try:
-        with open(log_file_path, "w") as log_file:
-            process = subprocess.Popen(
-                backend_command,
-                stdout=log_file,
-                stderr=log_file,
-                shell=False
-            )
-            print(f"子进程启动，PID: {process.pid}")
-            spinner = Halo(text='等待后端服务启动...', spinner='dots')
-            spinner.start()
-            health_url = f"http://localhost:{api_port}/health"
-            while True:
-                try:
-                    response = requests.get(health_url)
-                    if response.status_code == 200:
-                        spinner.succeed("模型vllm后端服务启动成功!") 
-                        break
-                except requests.ConnectionError:
-                    pass
-                time.sleep(5)
-                
-    except KeyboardInterrupt:
-        # 捕获 Ctrl+C
-        spinner.fail("检测到 Ctrl+C，正在终止后端服务...")
-        os.killpg(os.getpgid(process.pid), signal.SIGTERM)  # 终止整个进程组
-        process.wait()
-        logger.info("后端服务已停止")
-        raise
-    except Exception as e:
-        if spinner:
-            spinner.fail("后端服务启动失败!")
-        logger.error(f"检查日志: {log_file_path}")
+                time.sleep(1)
+    

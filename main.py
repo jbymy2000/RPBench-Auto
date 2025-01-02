@@ -13,42 +13,43 @@ import logging
 dataset_config = make_config("/home/xhai/rex/bench_base/configs/rpbench/dataset_config.yaml")['datasets']
 
 class Evaluator:
-    def __init__(self, model_name, work_dir, tag, language, port, max_workers, max_messages_per_char,verbose):
+    def __init__(self, model_name, work_dir, dataset_name,tag, port, max_workers, max_messages_per_char):
+        verbose=logging.INFO
         self.model_name = model_name
         self.work_dir = work_dir
         self.tag = tag
-        self.language = language
+        self.dataset_name = dataset_name
+        self.dataset_path = self.get_datasource_path(self.dataset_name)
+        self.language = self.get_datasource_lang(self.dataset_name)
         self.port = port
         self.max_workers = max_workers
         self.max_messages_per_char = max_messages_per_char
-        self.model_template,self.judger_template = get_template(language)['model'],get_template(language)['judger']
-        self.logger = setup_logger(os.path.join(self.work_dir,self.tag), f"eval_{self.model_name}.log",logging.Debug if verbose else logging.INFO)
+        self.model_template,self.judger_template = get_template(self.language)['model'],get_template(self.language)['judger']
+        self.logger = setup_logger(os.path.join(self.work_dir,self.tag), f"eval_{self.model_name}.log",logging.DEBUG if verbose else logging.INFO)
     
     def evaluate(self):
-        self.logger.info(f"开始对模型「{self.model_1}」进行benchmarking")
-        dataset_path = self.get_datasource_path(self.dataset_name)
+        print(f"开始对模型「{self.model_name}」进行benchmarking")
         eval_data = []
         win_lose_pairs = []
         eval_results = []
         ## 加载有关角色信息的数据
-        with jsonlines.open(dataset_path) as reader:
+        with jsonlines.open(self.dataset_path) as reader:
             for idx, obj in enumerate(reader):
                 eval_data.append((idx, obj)) 
-        self.logger.info(f"Loaded {len(eval_data)} examples from {dataset_path}")
+        self.logger.info(f"Loaded {len(eval_data)} examples from {self.dataset_path}")
 
         ## 调用gpt4o作为评判模型
         judger_config = make_config("/home/xhai/rex/bench_base/configs/rpbench/judger_config.yaml")
         assert len(judger_config) == 1, "Judger config should have only one model"
         judger_model_name = list(judger_config.keys())[0]
         judger_model = judger_config[judger_model_name]
-        self.logger.info(f"Judger model: `{judger_model_name}`")
+        # self.logger.info(f"Judger model: `{judger_model_name}`")
 
         ## 其余的api候选调用
         candidate_config = make_config("/home/xhai/rex/bench_base/configs/rpbench/api_config.yaml")
-        assert self.model_1 in candidate_config, f"{self.model_1} not found in candidate config"
-        assert self.model_2 in candidate_config, f"{self.model_2} not found in candidate config"
-        self.logger.info(f"Comparing `{self.model_1}` and `{self.model_2}`")
-        model_config = candidate_config[self.model_1]
+        assert self.model_name in candidate_config, f"{self.model_name} not found in candidate config"
+        # self.logger.info(f"Comparing `{self.model_name}` and `{self.model_name}`")
+        model_config = candidate_config[self.model_name]
         if model_config['source'] == 'local':
             if 'port' not in model_config['endpoints']:
                 model_config['endpoints']['api_port'] = self.port
@@ -66,7 +67,7 @@ class Evaluator:
                     character_data[1],
                     model_config,
                     judger_model,
-                    max_messages_per_char,
+                    self.max_messages_per_char,
                 ): character_data[0]
                 for character_data in eval_data
             }
@@ -78,7 +79,7 @@ class Evaluator:
                     indexed_eval_results.append((idx, result))
                 except Exception as e:
                     self.logger.error(f"Task failed at index {idx}, exiting program, Error processing data: {e}")
-                    raise RuntimeError(f"Task failed at index {idx}, exiting program.") from e
+                    #raise RuntimeError(f"Task failed at index {idx}, exiting program.") from e
         indexed_eval_results.sort(key=lambda x: x[0])
         eval_results = [result for _, result in indexed_eval_results]
         output_dir = os.path.join(self.work_dir, self.tag)
@@ -86,7 +87,7 @@ class Evaluator:
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         with jsonlines.open(
-            f"{output_dir}/eval_{self.model_1}.jsonl", "a"
+            f"{output_dir}/eval_{self.model_name}.jsonl", "w"
         ) as writer:
             writer.write_all(eval_results)
                 
@@ -132,7 +133,7 @@ class Evaluator:
 
                 # 调用候选模型获取响应
                 model_a_response = chat_completion(model_config, candidate_messages)
-                print('model_a_response',model_a_response)
+                # print('model_a_response',model_a_response)
                 # 将响应传递给评判模型
                 judger_message_content = model_a_response
                 judger_messages.append({"role": "user", "content": judger_message_content})
@@ -157,7 +158,6 @@ class Evaluator:
             return eval_results
         except Exception as e:
             self.logger.error(f"Error processing character data: {e}")
-            traceback.print_exc()
             raise
 
 
@@ -165,19 +165,23 @@ class Evaluator:
         if dataset_name not in dataset_config or 'path' not in dataset_config[dataset_name]:
             raise ValueError(f"Dataset `{dataset_name}` not found")
         return dataset_config[dataset_name]['path']
+
+    def get_datasource_lang(self,dataset_name):
+        if dataset_name not in dataset_config or 'lang' not in dataset_config[dataset_name]:
+            return 'en'
+        return dataset_config[dataset_name]['lang']
     
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str, required=True, help="Model name to evaluate")
-    parser.add_argument("-w", "--work_dir", type=str, required=True, help="Directory to save evaluation results")
-    parser.add_argument("--tag", type=str, required=True, help="Tag for the evaluation run")
-    parser.add_argument("--turn_num", type=int, default=10, help="Maximum number of messages per character")
-    parser.add_argument("--num_workers", type=int, default=10, help="Maximum number of threads")
-    parser.add_argument("--dataset", type=str, default='rpbench_character_subset', help="dataset file name define in dataset.yaml")
-    parser.add_argument("--lang", type=str, default="zh")
-    parser.add_argument("--port", type=str)
-    parser.add_argument("--verbose", action="store_true", help="Enable verbose output for debugging")
-    args = parser.parse_args()
-    max_messages_per_char = args.turn_num
-    evaluator = Evaluator(args.model, args.model, args.work_dir, args.dataset, args.tag,args.lang,args.port, args.num_workers, max_messages_per_char,args.verbose)
-    evaluator.evaluate()
+# if __name__ == "__main__":
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument("--model", type=str, required=True, help="Model name to evaluate")
+#     parser.add_argument("-w", "--work_dir", type=str, required=True, help="Directory to save evaluation results")
+#     parser.add_argument("--tag", type=str, required=True, help="Tag for the evaluation run")
+#     parser.add_argument("--turn_num", type=int, default=10, help="Maximum number of messages per character")
+#     parser.add_argument("--num_workers", type=int, default=10, help="Maximum number of threads")
+#     parser.add_argument("--dataset", type=str, default='rpbench_character_subset', help="dataset file name define in dataset.yaml")
+#     parser.add_argument("--port", type=str)
+#     parser.add_argument("--verbose", action="store_true", help="Enable verbose output for debugging")
+#     args = parser.parse_args()
+#     max_messages_per_char = args.turn_num
+#     evaluator = Evaluator(args.model, args.work_dir, args.dataset, args.tag,args.port, args.num_workers, max_messages_per_char)
+#     evaluator.evaluate()
