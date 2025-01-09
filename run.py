@@ -2,7 +2,7 @@ import argparse
 from preprocess import start_service
 from main import Evaluator
 from utils import make_config, get_open_port
-import os
+import os,sys
 import threading
 
 
@@ -36,6 +36,7 @@ if __name__ == "__main__":
         evaluator.evaluate()
     except KeyboardInterrupt:
         thread.join()
+        sys.exit(0) 
     finally:
         stop_event.set()
         import time

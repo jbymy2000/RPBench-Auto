@@ -5,10 +5,13 @@ from tqdm.auto import tqdm
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import traceback
+from tenacity import retry, stop_after_attempt, wait_fixed, before_log, after_log
 from prompt_template import get_template
 from logger import setup_logger
 import logging
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 dataset_config = make_config("/home/xhai/rex/bench_base/configs/rpbench/dataset_config.yaml")['datasets']
 
@@ -78,7 +81,7 @@ class Evaluator:
                     result = future.result()
                     indexed_eval_results.append((idx, result))
                 except Exception as e:
-                    self.logger.error(f"Task failed at index {idx}, exiting program, Error processing data: {e}")
+                    self.logger.error(f"Task failed at index {idx}, Error processing data: {e}")
                     #raise RuntimeError(f"Task failed at index {idx}, exiting program.") from e
         indexed_eval_results.sort(key=lambda x: x[0])
         eval_results = [result for _, result in indexed_eval_results]
@@ -93,7 +96,12 @@ class Evaluator:
                 
         return win_lose_pairs
 
-
+    @retry(
+        stop=stop_after_attempt(3),  # 最多重试 3 次
+        wait=wait_fixed(2),  # 每次重试等待 2 秒
+        before=before_log(logger, logging.INFO),  # 在重试前记录日志
+        after=after_log(logger, logging.INFO)  # 在重试后记录日志
+    )
     def process_single_character(
         self,
         character_data,
