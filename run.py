@@ -20,7 +20,7 @@ if __name__ == "__main__":
     
     model,work_dir,tag = args.model,args.work_dir,args.tag
     # 加载 API 配置
-    candidate_config = make_config("/home/xhai/rex/bench_base/configs/rpbench/api_config.yaml")
+    candidate_config = make_config("/home/xhai/rex/projects/xh_benchmarking/configs/rpbench/api_config.yaml")
     assert model in candidate_config, f"{model} not found in candidate config"
     model_config = candidate_config[model]
     port = None

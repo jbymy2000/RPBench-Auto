@@ -13,7 +13,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-dataset_config = make_config("/home/xhai/rex/bench_base/configs/rpbench/dataset_config.yaml")['datasets']
+dataset_config = make_config("/home/xhai/rex/projects/xh_benchmarking/configs/rpbench/dataset_config.yaml")['datasets']
 
 class Evaluator:
     def __init__(self, model_name, work_dir, dataset_name,tag, port, max_workers, max_messages_per_char):
@@ -42,14 +42,14 @@ class Evaluator:
         self.logger.info(f"Loaded {len(eval_data)} examples from {self.dataset_path}")
 
         ## 调用gpt4o作为评判模型
-        judger_config = make_config("/home/xhai/rex/bench_base/configs/rpbench/judger_config.yaml")
+        judger_config = make_config("/home/xhai/rex/projects/xh_benchmarking/configs/rpbench/judger_config.yaml")
         assert len(judger_config) == 1, "Judger config should have only one model"
         judger_model_name = list(judger_config.keys())[0]
         judger_model = judger_config[judger_model_name]
         # self.logger.info(f"Judger model: `{judger_model_name}`")
 
         ## 其余的api候选调用
-        candidate_config = make_config("/home/xhai/rex/bench_base/configs/rpbench/api_config.yaml")
+        candidate_config = make_config("/home/xhai/rex/projects/xh_benchmarking/configs/rpbench/api_config.yaml")
         assert self.model_name in candidate_config, f"{self.model_name} not found in candidate config"
         # self.logger.info(f"Comparing `{self.model_name}` and `{self.model_name}`")
         model_config = candidate_config[self.model_name]
