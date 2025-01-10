@@ -39,7 +39,8 @@ def start_backend_service(
         model_path,
         "--port", str(api_port),
         "--dtype", dtype,
-        "--api-key", api_key
+        "--api-key", api_key,
+        "--tensor-parallel-size", str(len(target_devices))
     ]
 
     print(f"启动vllm的命令是: {' '.join(backend_command)}")
